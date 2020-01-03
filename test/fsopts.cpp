@@ -47,10 +47,13 @@ std::stringstream handle_fail(
     }                                                                          \
   }
 
+void test_typeid() {
+  fsopts::detail::TypeId<int>::id();
+}
 void test_existance() {
-fsopts::OptionsDescription opts("/tmp");
-opts.add_option("am_i_set");
-opts.update();
+// fsopts::Description opts("/tmp");
+// auto handle = opts.add("am_i_set", fsopts::Value<int>().default(5));
+// opts.update();
 
 }
 
