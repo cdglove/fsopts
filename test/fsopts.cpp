@@ -48,7 +48,7 @@ std::stringstream handle_fail(
   }
 
 void test_typeid() {
-  fsopts::detail::TypeId<int>::id();
+  fsopts::detail::TypeId<int>::id;
 }
 void test_existance() {
 // fsopts::Description opts("/tmp");

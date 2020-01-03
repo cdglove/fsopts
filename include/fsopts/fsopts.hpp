@@ -22,29 +22,33 @@ namespace fsopts {
 
 namespace detail {
 
-
-class TypeIdBase {
- public:
-  static std::size_t next_index() {
-    static std::size_t x = 0;
-    return x++;
-  }
+template <typename T>
+struct TypeIdSource {
+  static T const* const id;
 };
 
 template <typename T>
-class TypeId : TypeIdBase {
+const T* const TypeIdSource<T>::id = nullptr;
+
+using type_id_t = void const*;
+
+template <typename T>
+constexpr auto type_id() noexcept -> type_id_t {
+  return &detail::TypeIdSource<T>::id;
+}
+
+template <typename T>
+class TypeId {
  public:
-  static id() {
-    static auto type = next_index();
-    return type;
-  }
+  static constexpr type_id_t id = type_id<T>();
 };
+
 } // namespace detail
 
-template<typename T>
+template <typename T>
 class Handle;
 
-template<typename T>
+template <typename T>
 class Value;
 
 class Description;
