@@ -26,8 +26,15 @@ if(*dump_all_things) {
 }
 ```
 
-In scenarios where we want to use the existing variable, we can modify the code as follows.
+We can then set the bool by touching the correct file:
 
+```sh
+$ touch /tmp/dump-all-things
+```
+
+When `Description::update` is called, it will detect the presense of the file, set the bool to true, and delete the file.
+
+In scenarios where we want to use the existing variable, we can modify the code as follows:
 
 ```cpp
 static fsopts::Description opts("/tmp");
