@@ -47,19 +47,6 @@ std::stringstream handle_fail(
     }                                                                          \
   }
 
-void test_bool() {
-  fsopts::Description ops("./");
-  auto h = ops.add("testing_fsopts_bool", fsopts::Value<bool>());
-  ops.update();
-  ASSERT_EQUAL(*h, false);
-  std::ofstream fout("testing_fsopts_bool");
-  fout << " ";
-  fout.close();
-  ops.update();
-  ASSERT_EQUAL(*h, true);
-  std::ifstream fin("testing_fsopts_bool");
-  ASSERT_EQUAL(fin.good(), false);
-}
 void test_int_float_string() {
   fsopts::Description ops("./");
   auto s = ops.add("testing_fsopts_string", fsopts::Value<std::string>());
@@ -99,12 +86,29 @@ void test_int_float_string() {
   ASSERT_EQUAL(fin.good(), false);
   fin.close();
 }
+
+void test_auto_reset() {
+  fsopts::Description ops("./");
+  auto h = ops.add("testing_fsopts_bool", fsopts::Value<bool>().auto_reset(true));
+  ops.update();
+  ASSERT_EQUAL(*h, false);
+  std::ofstream fout("testing_fsopts_bool");
+  fout << " ";
+  fout.close();
+  ops.update();
+  ASSERT_EQUAL(*h, true);
+  std::ifstream fin("testing_fsopts_bool");
+  ASSERT_EQUAL(fin.good(), false);
+  ops.update();
+  ASSERT_EQUAL(*h, false);
+}
+
 void test_remove_existing() {
 }
 
 int main() {
-  test_bool();
   test_int_float_string();
+  test_auto_reset();
   test_remove_existing();
   //test_defaults();
   return 0;
