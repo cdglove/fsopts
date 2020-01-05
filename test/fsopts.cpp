@@ -47,17 +47,65 @@ std::stringstream handle_fail(
     }                                                                          \
   }
 
-void test_typeid() {
-  fsopts::detail::TypeId<int>::id;
+void test_bool() {
+  fsopts::Description ops("./");
+  auto h = ops.add("testing_fsopts_bool", fsopts::Value<bool>());
+  ops.update();
+  ASSERT_EQUAL(*h, false);
+  std::ofstream fout("testing_fsopts_bool");
+  fout << " ";
+  fout.close();
+  ops.update();
+  ASSERT_EQUAL(*h, true);
+  std::ifstream fin("testing_fsopts_bool");
+  ASSERT_EQUAL(fin.good(), false);
 }
-void test_existance() {
-// fsopts::Description opts("/tmp");
-// auto handle = opts.add("am_i_set", fsopts::Value<int>().default(5));
-// opts.update();
+void test_int_float_string() {
+  fsopts::Description ops("./");
+  auto s = ops.add("testing_fsopts_string", fsopts::Value<std::string>());
+  auto i = ops.add("testing_fsopts_int", fsopts::Value<int>());
+  auto f = ops.add("testing_fsopts_float", fsopts::Value<float>());
+  ops.update();
+  ASSERT_EQUAL(*s, std::string{});
+  ASSERT_EQUAL(*i, int{});
+  ASSERT_EQUAL(*f, float{});
+  std::ofstream fout("testing_fsopts_string");
+  fout << "fsopts_string";
+  fout.close();
 
+  fout.open("testing_fsopts_int");
+  fout << 2;
+  fout.close();
+
+  fout.open("testing_fsopts_float");
+  fout << 0.01f;
+  fout.close();
+
+  ops.update();
+
+  ASSERT_EQUAL(*s, "fsopts_string");
+  ASSERT_EQUAL(*i, 2);
+  ASSERT_EQUAL(*f, 0.01f);
+
+  std::ifstream fin("testing_fsopts_string");
+  ASSERT_EQUAL(fin.good(), false);
+  fin.close();
+
+  fin.open("testing_fsopts_int");
+  ASSERT_EQUAL(fin.good(), false);
+  fin.close();
+
+  fin.open("testing_fsopts_float");
+  ASSERT_EQUAL(fin.good(), false);
+  fin.close();
+}
+void test_remove_existing() {
 }
 
 int main() {
-  test_existance();
+  test_bool();
+  test_int_float_string();
+  test_remove_existing();
+  //test_defaults();
   return 0;
 }
