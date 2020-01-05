@@ -93,11 +93,27 @@ void test_auto_reset() {
   ops.update();
   ASSERT_EQUAL(*h, false);
   std::ofstream fout("testing_fsopts_bool");
-  fout << " ";
+  fout << "true";
   fout.close();
   ops.update();
   ASSERT_EQUAL(*h, true);
   std::ifstream fin("testing_fsopts_bool");
+  ASSERT_EQUAL(fin.good(), false);
+  ops.update();
+  ASSERT_EQUAL(*h, false);
+}
+
+void test_trigger() {
+  fsopts::Description ops("./");
+  auto h = ops.add("testing_fsopts_trigger", fsopts::Trigger());
+  ops.update();
+  ASSERT_EQUAL(*h, false);
+  std::ofstream fout("testing_fsopts_trigger");
+  fout << " ";
+  fout.close();
+  ops.update();
+  ASSERT_EQUAL(*h, true);
+  std::ifstream fin("testing_fsopts_trigger");
   ASSERT_EQUAL(fin.good(), false);
   ops.update();
   ASSERT_EQUAL(*h, false);
@@ -109,6 +125,7 @@ void test_remove_existing() {
 int main() {
   test_int_float_string();
   test_auto_reset();
+  test_trigger();
   test_remove_existing();
   //test_defaults();
   return 0;

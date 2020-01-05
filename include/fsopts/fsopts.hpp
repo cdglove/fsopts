@@ -30,16 +30,6 @@ namespace fsopts {
 
 namespace detail {
 
-template <typename T>
-inline void default_exists_handler(std::string const& path, T& value) {
-  std::ifstream in(path);
-  in >> value;
-}
-
-inline void default_exists_handler(std::string const& path, bool& value) {
-  value = true;
-}
-
 inline bool file_accessible(std::string const& path) {
 #ifdef _WIN32
   return access(path.c_str(), 0) == 0;
@@ -52,90 +42,113 @@ inline void remove_file(std::string path) {
   remove(path.c_str());
 }
 
-class BasicHandler {
+class ValueUpdateBase {
  public:
-  BasicHandler() = default;
-  virtual ~BasicHandler(){};
+  ValueUpdateBase() = default;
+  virtual ~ValueUpdateBase(){};
 
-  BasicHandler(BasicHandler const&) = delete;
-  BasicHandler& operator=(BasicHandler const&) = delete;
+  ValueUpdateBase(ValueUpdateBase const&) = delete;
+  ValueUpdateBase& operator=(ValueUpdateBase const&) = delete;
 
   void update() {
-    handle_reset();
+    handle_update();
+  }
 
-    if(file_accessible(path())) {
-      handle_exists();
-      remove_file(path());
+ private:
+  virtual void handle_update() = 0;
+};
+
+template <typename ExistsHandler, typename ResetHandler>
+class UpdateHandler
+    : public ValueUpdateBase
+    , private ExistsHandler
+    , private ResetHandler {
+ public:
+  template <typename T>
+  UpdateHandler(std::string path, T&& default_value)
+      : ResetHandler(std::forward<T>(default_value))
+      , path_(std::move(path)) {
+  }
+
+ private:
+  void handle_update() override {
+    handle_reset();
+    std::string const& p = path_;
+    if(file_accessible(p)) {
+      handle_exists(p);
+      remove_file(p);
     }
   }
 
-  virtual std::string const& path() const = 0;
-
- private:
-  virtual void handle_reset()  = 0;
-  virtual void handle_exists() = 0;
-};
-
-template <typename T>
-class ValueProvider {
- private:
-  virtual T& value() = 0;
-};
-
-class PathProvider : private virtual BasicHandler {
- public:
-  PathProvider(std::string path)
-      : path_(std::move(path)) {
+  void handle_reset() {
+    ResetHandler& reset = *this;
+    reset();
   }
 
- protected:
-  std::string const& path() const override {
-    return path_;
+  void handle_exists(std::string const& path) {
+    ExistsHandler& exists = *this;
+    exists(path);
   }
 
   std::string path_;
 };
 
-class NullResetHandler : public virtual BasicHandler {
+template <typename T>
+class ExistsHandlerReadValue {
  public:
-  template <typename T>
-  NullResetHandler(T&&) {
+  void operator()(std::string const& path) {
+    std::ifstream in(path);
+    in >> std::boolalpha;
+    in >> value();
   }
 
  private:
-  void handle_reset() override {
+  virtual T& value() = 0;
+};
+
+class ExistsHandlerSetTrue {
+ public:
+  void operator()(std::string const&) {
+    value() = true;
+  }
+
+ private:
+  virtual bool& value() = 0;
+};
+
+class ResetHandlerNop {
+ public:
+  template <typename U>
+  ResetHandlerNop(U&&) {
+  }
+
+  void operator()() {
   }
 };
 
 template <typename T>
-class AutoResetHandler
-    : public virtual BasicHandler
-    , private virtual ValueProvider<T> {
+class ResetHandlerAuto {
  public:
-  AutoResetHandler(T default_value)
+  ResetHandlerAuto(T default_value)
       : default_value_(std::move(default_value)) {
   }
 
- private:
-  void handle_reset() override {
+  void operator()() {
     value() = default_value_;
   }
 
+ private:
   virtual T& value() = 0;
 
   T default_value_;
 };
 
-template <typename T, typename ResetHandler>
-class ValueHandler
-    : public virtual BasicHandler
-    , private virtual ValueProvider<T>
-    , private PathProvider
-    , private ResetHandler {
+template <typename T, typename ExistsHandler, typename ResetHandler>
+class ValueHandler : public UpdateHandler<ExistsHandler, ResetHandler> {
  public:
   ValueHandler(std::string path, T default_value)
-      : PathProvider(std::move(path))
-      , ResetHandler(std::move(default_value))
+      : UpdateHandler<ExistsHandler, ResetHandler>(
+            std::move(path), std::move(default_value))
       , value_(default_value) {
   }
 
@@ -144,10 +157,6 @@ class ValueHandler
   }
 
  private:
-  void handle_exists() override {
-    default_exists_handler(PathProvider::path(), value_);
-  }
-
   T& value() override {
     return value_;
   }
@@ -155,24 +164,16 @@ class ValueHandler
   T value_;
 };
 
-template <typename T, typename ResetHandler>
-class RefHandler
-    : public virtual BasicHandler
-    , private virtual ValueProvider<T>
-    , private PathProvider
-    , private ResetHandler {
+template <typename T, typename ExistsHandler, typename ResetHandler>
+class RefHandler : public UpdateHandler<ExistsHandler, ResetHandler> {
  public:
   RefHandler(std::string path, T default_value, T* ref)
-      : PathProvider(std::move(path))
-      , ResetHandler(std::move(default_value))
+      : UpdateHandler<ExistsHandler, ResetHandler>(
+            std::move(path), std::move(default_value))
       , ref_(ref) {
   }
 
  private:
-  void handle_exists() override {
-    default_exists_handler(PathProvider::path(), *ref_);
-  }
-
   T& value() override {
     return *ref_;
   }
@@ -237,6 +238,34 @@ class Value {
   bool auto_reset_      = false;
 };
 
+class Trigger {
+ public:
+  Trigger() {
+    v_.auto_reset(true);
+  }
+  explicit Trigger(bool* ref)
+      : v_(ref) {
+    v_.auto_reset(true);
+  }
+
+  Trigger& default_value(bool v) {
+    v_.default_value(v);
+    return *this;
+  }
+
+  Trigger& remove_existing(bool remove) {
+    v_.remove_existing(remove);
+    return *this;
+  }
+
+  Value<bool> const& to_value() const {
+    return v_;
+  }
+
+ private:
+  Value<bool> v_;
+};
+
 class Description {
  public:
   Description(char const* base_directory)
@@ -248,48 +277,12 @@ class Description {
 
   template <typename T>
   Handle<T> add(char const* file, Value<T> const& value) {
-    std::string full_path = base_ + file;
-    T* handle_ptr         = nullptr;
-    if(value.ref_) {
-      handle_ptr = value.ref_;
-      if(value.auto_reset_) {
-        auto handler = std::make_unique<
-            detail::RefHandler<T, detail::AutoResetHandler<T>>>(
-            full_path, value.default_val_, handle_ptr);
-        handlers_->push_back(std::move(handler));
-      }
-      else {
-        auto handler =
-            std::make_unique<detail::RefHandler<T, detail::NullResetHandler>>(
-                full_path, value.default_val_, handle_ptr);
-        handlers_->push_back(std::move(handler));
-      }
-    }
-    else {
-      if(value.auto_reset_) {
-        auto handler = std::make_unique<
-            detail::ValueHandler<T, detail::AutoResetHandler<T>>>(
-            full_path, value.default_val_);
-        handle_ptr = handler->ptr();
-        handlers_->push_back(std::move(handler));
-      }
-      else {
-        auto handler =
-            std::make_unique<detail::ValueHandler<T, detail::NullResetHandler>>(
-                full_path, value.default_val_);
-        handle_ptr = handler->ptr();
-        handlers_->push_back(std::move(handler));
-      }
-    }
-
-    if(value.remove_existing_) {
-      if(access(full_path.c_str(), F_OK) == 0) {
-        remove(full_path.c_str());
-      }
-    }
-
-    return Handle<T>({handlers_, handle_ptr});
+    return add_reset<detail::ExistsHandlerReadValue<T>>(file, value);
   };
+
+  Handle<bool> add(char const* file, Trigger const& trigger) {
+    return add_reset<detail::ExistsHandlerSetTrue>(file, trigger.to_value());
+  }
 
   void update() {
     for(auto&& handler : *handlers_) {
@@ -298,7 +291,51 @@ class Description {
   }
 
  private:
-  using HandlerArray = std::vector<std::unique_ptr<detail::BasicHandler>>;
+  template <typename ExistsHandler, typename T>
+  Handle<T> add_reset(char const* file, Value<T> const& value) {
+    if(value.auto_reset_) {
+      return add_updater<ExistsHandler, detail::ResetHandlerAuto<T>>(
+          file, value);
+    }
+    else {
+      return add_updater<ExistsHandler, detail::ResetHandlerNop>(file, value);
+    }
+  }
+
+  template <typename ExistsHandler, typename ResetHandler, typename T>
+  Handle<T> add_updater(char const* file, Value<T> const& value) {
+    if(value.ref_) {
+      return add_ref<ExistsHandler, ResetHandler>(file, value);
+    }
+    else {
+      return add_value<ExistsHandler, ResetHandler>(file, value);
+    }
+  }
+
+  template <typename ExistsHandler, typename ResetHandler, typename T>
+  Handle<T> add_value(char const* file, Value<T> const& value) {
+    auto handler =
+        std::make_unique<detail::ValueHandler<T, ExistsHandler, ResetHandler>>(
+            base_ + file, value.default_val_);
+    T* ptr = handler->ptr();
+    append_handler(std::move(handler));
+    return Handle<T>({handlers_, ptr});
+  };
+
+  template <typename ExistsHandler, typename ResetHandler, typename T>
+  Handle<T> add_ref(char const* file, Value<T> const& value) {
+    auto handler =
+        std::make_unique<detail::RefHandler<T, ExistsHandler, ResetHandler>>(
+            base_ + file, value.default_val_, value.ref_);
+    append_handler(std::move(handler));
+    return Handle<T>({handlers_, value.ref_});
+  };
+
+  void append_handler(std::unique_ptr<detail::ValueUpdateBase> handler) {
+    handlers_->push_back(std::move(handler));
+  }
+
+  using HandlerArray = std::vector<std::unique_ptr<detail::ValueUpdateBase>>;
   std::string base_;
   std::shared_ptr<HandlerArray> handlers_ = std::make_shared<HandlerArray>();
 };
