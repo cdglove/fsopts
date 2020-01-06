@@ -16,7 +16,7 @@ In this very simple example, one might be manually running a test and need to de
 
 ```cpp
 static fsopts::Description opts("/tmp");
-static fsopts::Handle<bool> dump_all_things = opts.add("dump-all-things", fsopts::Trigger());
+static fsopts::Option<bool> dump_all_things = opts.add("dump-all-things", fsopts::Trigger());
 opts.update();
 
 if(*dump_all_things) {
@@ -26,7 +26,7 @@ if(*dump_all_things) {
 }
 ```
 
-We can then set the `Handle<bool>` by touching the correct file:
+We can then set the `Option<bool>` by touching the correct file:
 
 ```sh
 $ touch /tmp/dump-all-things
@@ -38,7 +38,7 @@ In scenarios where we want to use the existing variable, we can modify the code 
 
 ```cpp
 static fsopts::Description opts("/tmp");
-static fsopts::Handle<bool> dump_all_things = opts.add("dump-all-things", fsopts::Trigger(&g_dump_all_things));
+static fsopts::Option<bool> dump_all_things = opts.add("dump-all-things", fsopts::Trigger(&g_dump_all_things));
 opts.update();
 
 if(g_dump_all_things) {
@@ -52,7 +52,7 @@ This is the behaviour of the Trigger options, but we can also read values from f
 
 ```cpp
 static fsopts::Description opts("/tmp");
-static fsopts::Handle<int> count = opts.add("dump-some-things", fsopts::Value<int>().default_value(0));
+static fsopts::Option<int> count = opts.add("dump-some-things", fsopts::Value<int>().default_value(0));
 opts.update();
 
 int dump_count = *count;
@@ -72,8 +72,8 @@ $ echo 3 > /tmp/dump-some-things
 
 # Design rationale
 
-The design relies on the user creating static variables to track the Description and Handle instances. This was done intentionally do satisy the following requirements:
+The design relies on the user creating static variables to track the Description and Option instances. This was done intentionally do satisy the following requirements:
     
-* **Code should integrate easily into any piece of existing code.** The idea is that this is a debugging & testing tool, and the use might not have access to other code to do a full integration. Assigning to statics makes this easy, and made the utilisation of a Handle class obvious.
+* **Code should integrate easily into any piece of existing code.** The idea is that this is a debugging & testing tool, and the use might not have access to other code to do a full integration. Assigning to statics makes this easy, and made the utilisation of a Option class obvious.
     
 * **Reading variables should be fast.** We don't want to affect the speed of the surrounding code too much in case the user is toggling featuers for performance testing, hech we don't want to to be doing things like hash table lookups in the hot path.
