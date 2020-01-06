@@ -31,9 +31,9 @@ namespace fsopts {
 class Description;
 
 template <typename T>
-class Handle {
+class Option {
  public:
-  Handle() = default;
+  Option() = default;
 
   T const& operator*() const {
     return get();
@@ -45,7 +45,7 @@ class Handle {
 
  private:
   friend class Description;
-  explicit Handle(std::shared_ptr<T> ptr)
+  explicit Option(std::shared_ptr<T> ptr)
       : value_(std::move(ptr)) {
   }
 
@@ -121,11 +121,11 @@ class Description {
   }
 
   template <typename T>
-  Handle<T> add(char const* file, Value<T> const& value) {
+  Option<T> add(char const* file, Value<T> const& value) {
     return add_reset<ExistsHandlerReadValue<T>>(file, value);
   };
 
-  Handle<bool> add(char const* file, Trigger const& trigger) {
+  Option<bool> add(char const* file, Trigger const& trigger) {
     return add_reset<ExistsHandlerSetTrue>(file, trigger.to_value());
   }
 
@@ -287,7 +287,7 @@ class Description {
   };
 
   template <typename ExistsHandler, typename T>
-  Handle<T> add_reset(char const* file, Value<T> const& value) {
+  Option<T> add_reset(char const* file, Value<T> const& value) {
     if(value.auto_reset_) {
       return add_updater<ExistsHandler, ResetHandlerAuto<T>>(file, value);
     }
@@ -297,7 +297,7 @@ class Description {
   }
 
   template <typename ExistsHandler, typename ResetHandler, typename T>
-  Handle<T> add_updater(char const* file, Value<T> const& value) {
+  Option<T> add_updater(char const* file, Value<T> const& value) {
     if(value.ref_) {
       return add_ref<ExistsHandler, ResetHandler>(file, value);
     }
@@ -307,21 +307,21 @@ class Description {
   }
 
   template <typename ExistsHandler, typename ResetHandler, typename T>
-  Handle<T> add_value(char const* file, Value<T> const& value) {
+  Option<T> add_value(char const* file, Value<T> const& value) {
     auto handler =
         std::make_unique<ValueHandler<T, ExistsHandler, ResetHandler>>(
             base_ + file, value.default_val_);
     T* ptr = handler->ptr();
     append_handler(std::move(handler));
-    return Handle<T>({handlers_, ptr});
+    return Option<T>({handlers_, ptr});
   };
 
   template <typename ExistsHandler, typename ResetHandler, typename T>
-  Handle<T> add_ref(char const* file, Value<T> const& value) {
+  Option<T> add_ref(char const* file, Value<T> const& value) {
     auto handler = std::make_unique<RefHandler<T, ExistsHandler, ResetHandler>>(
         base_ + file, value.default_val_, value.ref_);
     append_handler(std::move(handler));
-    return Handle<T>({handlers_, value.ref_});
+    return Option<T>({handlers_, value.ref_});
   };
 
   void append_handler(std::unique_ptr<ValueUpdateBase> handler) {
