@@ -1,6 +1,6 @@
 # fsopts
 
-fsopts is a small helper library to facilitate live tunablaes in code. It's primary use is for situations where tweaking a tuneable using a debugger is difficult, causes timing issues, or is simply unavailable.
+fsopts is a small helper library to facilitate live tunables in code. It's primary use is for situations where tweaking a tuneable using a debugger is difficult, causes timing issues, or is simply unavailable.
 
 Example:
 
