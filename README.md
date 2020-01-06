@@ -74,6 +74,6 @@ $ echo 3 > /tmp/dump-some-things
 
 The design relies on the user creating static variables to track the Description and Handle instances. This was done intentionally do satisy the following requirements:
     
-* **Code should be easily droppable into any piece of existing code.** The idea is that this is a debugging & testing tool, and the use might not have access to other code to do a full integration. Assigning to statics makes this easy, and made the utilisation of a Handle class obvious.
+* **Code should integrate easily into any piece of existing code.** The idea is that this is a debugging & testing tool, and the use might not have access to other code to do a full integration. Assigning to statics makes this easy, and made the utilisation of a Handle class obvious.
     
 * **Reading variables should be fast.** We don't want to affect the speed of the surrounding code too much in case the user is toggling featuers for performance testing, hech we don't want to to be doing things like hash table lookups in the hot path.
