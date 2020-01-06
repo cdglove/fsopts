@@ -32,7 +32,7 @@ We can then set the `Option<bool>` by touching the correct file:
 $ touch /tmp/dump-all-things
 ```
 
-When `Description::update` is called, it will detect the presense of the file, set the bool to true, and delete the file.
+When `Description::update` is called, it will detect the presense of the file, set the bool to true, and delete the file. The next call to update will set the bool back to false.
 
 In scenarios where we want to use the existing variable, we can modify the code as follows:
 
