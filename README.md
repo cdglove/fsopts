@@ -12,7 +12,7 @@ if(g_dump_all_things) {
 }
 ```
 
-In this very simple example, one might be manually running a test, and need to debug what's in the thing collection. Toggling `g_dump_all_things` in the debugger is one way to engage this code path, but in scenarios where that's difficult, and the system doesn't already have a machanism for tweaking variables, we can use this library.
+In this very simple example, one might be manually running a test and need to debug whats in the thing collection. Toggling `g_dump_all_things` in the debugger is one way to engage this code path, but in scenarios where that's difficult, and the system doesn't already have a machanism for tweaking variables, we can use this library.
 
 ```cpp
 static fsopts::Description opts("/tmp");
